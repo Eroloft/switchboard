@@ -1,0 +1,19 @@
+{
+  "name": "switchboard",
+  "version": "0.1.0",
+  "description": "Smart LLM gateway that plans with a strong model and executes with cheap ones — save tokens without losing quality.",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "keywords": ["llm", "gateway", "router", "openai", "anthropic", "cost", "tokens"],
+  "license": "MIT",
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
