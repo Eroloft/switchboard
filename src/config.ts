@@ -23,7 +23,7 @@ export function loadConfig(): Config {
   let strongDefault = "mock-strong";
   if (useLocal) {
     cheapDefault = "qwen3.5:2b";
-    strongDefault = "dolphin-mistral";
+    strongDefault = "qwen2.5-coder:7b";
   } else if (hasAnthropic) {
     cheapDefault = "claude-haiku-4-5";
     strongDefault = "claude-opus-4-8";

@@ -60,6 +60,25 @@ The cheap/strong pair is chosen automatically from your keys; override with
 `CHEAP_MODEL` / `STRONG_MODEL` to pick any models from `src/registry.ts`
 (e.g. `claude-haiku-4-5`, `claude-sonnet-5`, `claude-opus-4-8`, `claude-fable-5`).
 
+## Local mode — free & private (great for stretching subscription limits)
+
+Route the easy majority of your work to **free local models** (via [Ollama](https://ollama.com))
+and save an expensive cloud model (or a rate-limited subscription) for the hard parts.
+Nothing leaves your machine, and no API tokens or subscription limits are spent on routine work.
+
+```bash
+ollama pull qwen2.5-coder:7b   # capable local "strong" model (planner)
+ollama pull qwen3.5:2b         # fast local "cheap" model (executor)
+bun run start:local            # cheap=qwen3.5:2b, strong=qwen2.5-coder:7b, all $0
+```
+
+Every request is now answered locally for **$0**. Point a tool at it (below) and your
+day-to-day coding assistant runs free — you only reach for the paid/subscription model
+when the task is genuinely hard.
+
+> Small local models (7B) are great for chat and routine coding, but heavy agentic tools
+> may need a larger model. Pull `qwen2.5-coder:14b` for more capability (slower on ≤8 GB VRAM).
+
 ## Plug into your tools
 
 ```bash

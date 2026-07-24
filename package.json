@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts"
+    "start": "bun run src/index.ts",
+    "start:local": "LOCAL=1 bun run src/index.ts"
   },
   "keywords": ["llm", "gateway", "router", "openai", "anthropic", "cost", "tokens"],
   "license": "MIT",
