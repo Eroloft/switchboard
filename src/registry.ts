@@ -37,7 +37,8 @@ export const MODELS: Record<string, ModelInfo> = {
   // --- Local models via Ollama (free — $0, runs on your machine) ---
   // Great "cheap" tier: offloads easy work so you don't burn API $ or a Claude subscription limit.
   "qwen3.5:2b": { id: "qwen3.5:2b", provider: "ollama", tier: "cheap", inputPerM: 0, outputPerM: 0 },
-  "dolphin-mistral": { id: "dolphin-mistral", provider: "ollama", tier: "strong", inputPerM: 0, outputPerM: 0 },
+  "dolphin-mistral": { id: "dolphin-mistral", provider: "ollama", tier: "cheap", inputPerM: 0, outputPerM: 0 },
+  "qwen2.5-coder:7b": { id: "qwen2.5-coder:7b", provider: "ollama", tier: "strong", inputPerM: 0, outputPerM: 0 },
 };
 
 export function modelInfo(id: string): ModelInfo | undefined {

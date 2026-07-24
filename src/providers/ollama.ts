@@ -13,6 +13,9 @@ export class OllamaProvider implements Provider {
     const res = await fetch(`${this.baseUrl}/api/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
+      // Local models can be slow (model load into VRAM + CPU-offloaded generation),
+      // so give them a generous ceiling instead of a short default timeout.
+      signal: AbortSignal.timeout(600_000),
       body: JSON.stringify({
         model: call.model,
         messages: call.messages.map((m) => ({ role: m.role, content: m.content })),
