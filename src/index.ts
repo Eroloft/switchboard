@@ -2,13 +2,23 @@ import { Hono } from "hono";
 import { loadConfig } from "./config.ts";
 import { Providers } from "./providers/index.ts";
 import { route } from "./router/index.ts";
+import { modelInfo } from "./registry.ts";
+import { Stats } from "./stats.ts";
 import type { ChatRequest, Message } from "./types.ts";
 
 const config = loadConfig();
 const providers = new Providers(config);
+const stats = new Stats(config.statsDbPath);
 const app = new Hono();
 
 app.get("/health", (c) => c.json({ status: "ok", service: "switchboard" }));
+
+// Cumulative savings across all requests — powers subscription / comparison views.
+// Optional ?since=<unix-seconds> to window the totals.
+app.get("/stats", (c) => {
+  const since = Number(c.req.query("since") ?? 0);
+  return c.json(stats.summary(Number.isFinite(since) ? since : 0));
+});
 
 // OpenAI-compatible endpoint — this is what Codex / Cursor / Aider talk to.
 app.post("/v1/chat/completions", async (c) => {
@@ -43,6 +53,29 @@ app.post("/v1/chat/completions", async (c) => {
 
     const promptTokens = out.steps.reduce((s, x) => s + x.usage.promptTokens, 0);
     const completionTokens = out.steps.reduce((s, x) => s + x.usage.completionTokens, 0);
+
+    // Split tokens by tier so we can report "% handled by cheap models".
+    let cheapTokens = 0;
+    let strongTokens = 0;
+    for (const s of out.steps) {
+      const t = s.usage.promptTokens + s.usage.completionTokens;
+      if (modelInfo(s.model)?.tier === "strong") strongTokens += t;
+      else cheapTokens += t;
+    }
+
+    stats.record({
+      ts: Math.floor(Date.now() / 1000),
+      strategy: out.strategy,
+      model: out.actualModel,
+      promptTokens,
+      completionTokens,
+      cheapTokens,
+      strongTokens,
+      costUsd: out.totalCostUsd,
+      baselineUsd: out.baselineCostUsd,
+      savedUsd: out.savedUsd,
+      steps: out.steps.length,
+    });
 
     return c.json({
       id: `chatcmpl-sb-${Date.now()}`,
@@ -79,5 +112,6 @@ app.post("/v1/chat/completions", async (c) => {
 console.log(`switchboard listening on http://localhost:${config.port}`);
 console.log(`  cheap model:  ${config.cheapModel}`);
 console.log(`  strong model: ${config.strongModel}`);
+console.log(`  stats db:     ${config.statsDbPath}`);
 
 export default { port: config.port, fetch: app.fetch };

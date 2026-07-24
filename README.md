@@ -66,11 +66,26 @@ Then run Codex / Cursor / Aider as usual — every request now flows through Swi
 
 > Claude Code speaks the Anthropic format; a native `/v1/messages` endpoint is on the roadmap.
 
+## Stats & savings
+
+Every request is logged to a local SQLite file (`switchboard.db`). Ask the gateway
+for cumulative totals:
+
+```bash
+curl http://localhost:4000/stats
+```
+
+You get requests, tokens, **% of tokens handled by cheap models**, dollars spent vs
+the strong-only baseline, dollars saved and saved %, plus a per-strategy breakdown.
+Add `?since=<unix-seconds>` to window it (e.g. this month). This is the raw material
+for a "you saved $X this month" dashboard or subscription view.
+
 ## Roadmap
 
 - [x] OpenAI-compatible `/v1/chat/completions`
 - [x] Cascade strategy + cost/savings reporting
 - [x] `auto-plan` (plan → execute) strategy
+- [x] Cumulative stats (SQLite) + `/stats` endpoint (saved $, tokens, per strategy)
 - [ ] `auto-classify` (judge difficulty first) strategy
 - [ ] Streaming (SSE)
 - [ ] Anthropic-native `/v1/messages` (Claude Code support)

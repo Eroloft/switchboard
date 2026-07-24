@@ -5,6 +5,8 @@ export interface Config {
   /** concrete cheap/strong models the strategies use */
   cheapModel: string;
   strongModel: string;
+  /** path to the SQLite file that stores cumulative stats */
+  statsDbPath: string;
 }
 
 export function loadConfig(): Config {
@@ -17,5 +19,6 @@ export function loadConfig(): Config {
     // Default to the keyless mock models so `bun start` works out of the box.
     cheapModel: env.CHEAP_MODEL ?? (hasKeys ? "gpt-4o-mini" : "mock-cheap"),
     strongModel: env.STRONG_MODEL ?? (hasKeys ? "gpt-4o" : "mock-strong"),
+    statsDbPath: env.STATS_DB ?? "switchboard.db",
   };
 }
