@@ -5,6 +5,7 @@ import type { RouteOutcome } from "./types.ts";
 import { modelInfo } from "../registry.ts";
 import { callModel } from "./single.ts";
 import { runCascade } from "./cascade.ts";
+import { runPlan } from "./plan.ts";
 
 /**
  * Entry point: look at the requested "model" name and pick a behavior.
@@ -22,6 +23,10 @@ export async function route(
 
   if (name === "auto-cascade" || name === "auto") {
     return runCascade(providers, config, req);
+  }
+
+  if (name === "auto-plan") {
+    return runPlan(providers, config, req);
   }
 
   // Concrete model pass-through.

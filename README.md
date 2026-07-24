@@ -24,7 +24,7 @@ Strategies are chosen by the `model` field of the request:
 | --------------- | -------------------------------------------------------- | ------ |
 | `auto-cascade`  | Try cheap first; escalate to strong only if answer shaky | ✅ MVP  |
 | `auto-classify` | Judge difficulty first, then pick the model              | 🔜     |
-| `auto-plan`     | Strong plans, cheap executes, then verify                | 🔜     |
+| `auto-plan`     | Strong plans, cheap executes, then synthesize            | ✅ MVP  |
 | a concrete id   | Pass straight through to that model                      | ✅      |
 
 ## Quickstart
@@ -70,7 +70,8 @@ Then run Codex / Cursor / Aider as usual — every request now flows through Swi
 
 - [x] OpenAI-compatible `/v1/chat/completions`
 - [x] Cascade strategy + cost/savings reporting
-- [ ] `auto-classify` and `auto-plan` (plan → execute) strategies
+- [x] `auto-plan` (plan → execute) strategy
+- [ ] `auto-classify` (judge difficulty first) strategy
 - [ ] Streaming (SSE)
 - [ ] Anthropic-native `/v1/messages` (Claude Code support)
 - [ ] Real, verified pricing table + eval harness ("saved X %, quality unchanged")
