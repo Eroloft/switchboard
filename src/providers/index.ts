@@ -2,6 +2,7 @@ import type { Provider } from "./types.ts";
 import { MockProvider } from "./mock.ts";
 import { OpenAIProvider } from "./openai.ts";
 import { AnthropicProvider } from "./anthropic.ts";
+import { OllamaProvider } from "./ollama.ts";
 import { modelInfo } from "../registry.ts";
 import type { Config } from "../config.ts";
 
@@ -11,6 +12,8 @@ export class Providers {
 
   constructor(config: Config) {
     this.byId.set("mock", new MockProvider());
+    // Ollama is local + keyless — always available (calls fail gracefully if it isn't running).
+    this.byId.set("ollama", new OllamaProvider(config.ollamaBaseUrl));
     if (config.openaiKey) this.byId.set("openai", new OpenAIProvider(config.openaiKey));
     if (config.anthropicKey) this.byId.set("anthropic", new AnthropicProvider(config.anthropicKey));
   }

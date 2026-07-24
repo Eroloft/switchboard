@@ -33,6 +33,11 @@ export const MODELS: Record<string, ModelInfo> = {
   "claude-sonnet-5": { id: "claude-sonnet-5", provider: "anthropic", tier: "strong", inputPerM: 3.0, outputPerM: 15.0 },
   "claude-opus-4-8": { id: "claude-opus-4-8", provider: "anthropic", tier: "strong", inputPerM: 5.0, outputPerM: 25.0 },
   "claude-fable-5": { id: "claude-fable-5", provider: "anthropic", tier: "strong", inputPerM: 10.0, outputPerM: 50.0 },
+
+  // --- Local models via Ollama (free — $0, runs on your machine) ---
+  // Great "cheap" tier: offloads easy work so you don't burn API $ or a Claude subscription limit.
+  "qwen3.5:2b": { id: "qwen3.5:2b", provider: "ollama", tier: "cheap", inputPerM: 0, outputPerM: 0 },
+  "dolphin-mistral": { id: "dolphin-mistral", provider: "ollama", tier: "strong", inputPerM: 0, outputPerM: 0 },
 };
 
 export function modelInfo(id: string): ModelInfo | undefined {
