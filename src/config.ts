@@ -11,14 +11,27 @@ export interface Config {
 
 export function loadConfig(): Config {
   const env = process.env;
-  const hasKeys = Boolean(env.OPENAI_API_KEY || env.ANTHROPIC_API_KEY);
+  const hasAnthropic = Boolean(env.ANTHROPIC_API_KEY);
+  const hasOpenAI = Boolean(env.OPENAI_API_KEY);
+
+  // Pick sensible default cheap/strong models based on which keys are present.
+  // Anthropic is preferred when available; otherwise OpenAI; otherwise mock.
+  let cheapDefault = "mock-cheap";
+  let strongDefault = "mock-strong";
+  if (hasAnthropic) {
+    cheapDefault = "claude-haiku-4-5";
+    strongDefault = "claude-opus-4-8";
+  } else if (hasOpenAI) {
+    cheapDefault = "gpt-4o-mini";
+    strongDefault = "gpt-4o";
+  }
+
   return {
     port: Number(env.PORT ?? 4000),
     openaiKey: env.OPENAI_API_KEY,
     anthropicKey: env.ANTHROPIC_API_KEY,
-    // Default to the keyless mock models so `bun start` works out of the box.
-    cheapModel: env.CHEAP_MODEL ?? (hasKeys ? "gpt-4o-mini" : "mock-cheap"),
-    strongModel: env.STRONG_MODEL ?? (hasKeys ? "gpt-4o" : "mock-strong"),
+    cheapModel: env.CHEAP_MODEL ?? cheapDefault,
+    strongModel: env.STRONG_MODEL ?? strongDefault,
     statsDbPath: env.STATS_DB ?? "switchboard.db",
   };
 }

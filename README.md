@@ -46,14 +46,19 @@ The response includes a `switchboard` block showing the route, the cost, and how
 
 ## Use real models
 
-Copy `.env.example` to `.env` and add keys:
+Copy `.env.example` to `.env` and add whichever key you have:
 
 ```
-OPENAI_API_KEY=sk-...
+# Anthropic (cheap/strong auto-picks claude-haiku-4-5 / claude-opus-4-8)
 ANTHROPIC_API_KEY=sk-ant-...
-CHEAP_MODEL=gpt-4o-mini
-STRONG_MODEL=gpt-4o
+
+# or OpenAI (auto-picks gpt-4o-mini / gpt-4o)
+OPENAI_API_KEY=sk-...
 ```
+
+The cheap/strong pair is chosen automatically from your keys; override with
+`CHEAP_MODEL` / `STRONG_MODEL` to pick any models from `src/registry.ts`
+(e.g. `claude-haiku-4-5`, `claude-sonnet-5`, `claude-opus-4-8`, `claude-fable-5`).
 
 ## Plug into your tools
 
@@ -93,6 +98,7 @@ for a "you saved $X this month" dashboard or subscription view.
 
 ## Status
 
-Early MVP. Prices in `src/registry.ts` are **examples** — verify them before trusting the dollar numbers.
+Early MVP. Prices in `src/registry.ts` are real published rates (Anthropic verified
+2026-06-24, OpenAI 2026) — still confirm current pricing for your own account/region.
 
 MIT licensed.
