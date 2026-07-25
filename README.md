@@ -14,8 +14,8 @@ Switchboard — это «прораб» посередине. Он сам реш
 ## What makes it different
 
 Most gateways (LiteLLM, RouteLLM) pick **one** model per request.
-Switchboard also aims to support **plan → execute**: a strong model writes a short plan,
-cheap models do the bulk of the work, then a quick check. That is where the real token
+Switchboard also supports **plan → execute**: a strong model writes a short plan,
+cheap models do the bulk of the work, then a final synthesis. That is where the real token
 savings on hard tasks come from.
 
 Strategies are chosen by the `model` field of the request:
@@ -42,7 +42,7 @@ In another terminal:
 curl http://localhost:4000/v1/chat/completions -H "content-type: application/json" -d "{\"model\":\"auto-cascade\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello!\"}]}"
 ```
 
-The response includes a `switchboard` block showing the route, the cost, and how much was saved.
+The (non-streaming) JSON response includes a `switchboard` block showing the route, the cost, and how much was saved.
 
 ## Use real models
 

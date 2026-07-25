@@ -34,6 +34,12 @@ interface FileConfig {
   models?: Record<string, FileModel>;
 }
 
+/** Parse a numeric env/config value; fall back to the default when missing or non-numeric. */
+function num(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** Read an optional switchboard.config.json (path overridable via SWITCHBOARD_CONFIG). */
 function loadFile(): FileConfig {
   const path = process.env.SWITCHBOARD_CONFIG ?? "switchboard.config.json";
@@ -77,13 +83,13 @@ export function loadConfig(): Config {
 
   // Precedence: environment variable > config file > computed default.
   return {
-    port: Number(env.PORT ?? file.port ?? 4000),
+    port: num(env.PORT ?? file.port, 4000),
     openaiKey: env.OPENAI_API_KEY,
     anthropicKey: env.ANTHROPIC_API_KEY,
     ollamaBaseUrl: env.OLLAMA_BASE_URL ?? file.ollamaBaseUrl ?? "http://localhost:11434",
     cheapModel: env.CHEAP_MODEL ?? file.cheapModel ?? cheapDefault,
     strongModel: env.STRONG_MODEL ?? file.strongModel ?? strongDefault,
     statsDbPath: env.STATS_DB ?? file.statsDbPath ?? "switchboard.db",
-    classifyThreshold: Number(env.CLASSIFY_THRESHOLD ?? file.classifyThreshold ?? 0.4),
+    classifyThreshold: num(env.CLASSIFY_THRESHOLD ?? file.classifyThreshold, 0.4),
   };
 }

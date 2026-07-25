@@ -25,6 +25,8 @@ export class AnthropicProvider implements Provider {
         "x-api-key": this.apiKey,
         "anthropic-version": "2023-06-01",
       },
+      // Don't let a stalled cloud connection hang the whole cascade/plan chain.
+      signal: AbortSignal.timeout(120_000),
       body: JSON.stringify({
         model: call.model,
         system: system || undefined,

@@ -19,6 +19,6 @@ const LOW_CONFIDENCE_MARKERS = [
 
 export function looksLowConfidence(answer: string): boolean {
   const a = answer.toLowerCase().trim();
-  if (a.length < 20) return true; // suspiciously short
+  if (!a) return true; // empty answer — escalate (a short but valid answer like "4" must NOT)
   return LOW_CONFIDENCE_MARKERS.some((m) => a.includes(m));
 }

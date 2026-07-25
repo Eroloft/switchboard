@@ -14,6 +14,8 @@ export class OpenAIProvider implements Provider {
         "content-type": "application/json",
         authorization: `Bearer ${this.apiKey}`,
       },
+      // Don't let a stalled cloud connection hang the whole cascade/plan chain.
+      signal: AbortSignal.timeout(120_000),
       body: JSON.stringify({
         model: call.model,
         messages: call.messages.map((m) => ({ role: m.role, content: m.content })),

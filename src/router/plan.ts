@@ -2,7 +2,7 @@ import type { ChatRequest, Message, Usage } from "../types.ts";
 import type { Providers } from "../providers/index.ts";
 import type { Config } from "../config.ts";
 import type { RouteOutcome, StepTrace } from "./types.ts";
-import { costUsd } from "../cost.ts";
+import { costUsd, estimateTokens } from "../cost.ts";
 import { callModel } from "./single.ts";
 
 // The strong model is asked to return ONLY this JSON shape.
@@ -78,15 +78,16 @@ export async function runPlan(
 
   // Cost + savings.
   const totalCostUsd = steps.reduce((s, x) => s + x.costUsd, 0);
-  const aggregate: Usage = steps.reduce<Usage>(
-    (u, x) => ({
-      promptTokens: u.promptTokens + x.usage.promptTokens,
-      completionTokens: u.completionTokens + x.usage.completionTokens,
-    }),
-    { promptTokens: 0, completionTokens: 0 },
-  );
-  // Baseline = the strong model doing ALL of this work alone.
-  const baselineCostUsd = costUsd(config.strongModel, aggregate);
+  // Baseline = the strong model answering the ORIGINAL request in one shot: it reads
+  // the user's messages and returns an answer of comparable length. Summing every
+  // sub-step's usage would N-count the task context we re-inject into each execute/
+  // synthesize call and overstate savings ~N×, so we price the single-shot equivalent.
+  const originalPrompt = req.messages.map((m) => m.content).join("\n");
+  const baselineUsage: Usage = {
+    promptTokens: estimateTokens(originalPrompt),
+    completionTokens: estimateTokens(synth.content),
+  };
+  const baselineCostUsd = costUsd(config.strongModel, baselineUsage);
 
   return {
     content: synth.content,
@@ -95,6 +96,7 @@ export async function runPlan(
     steps,
     totalCostUsd,
     baselineCostUsd,
-    savedUsd: Math.max(0, baselineCostUsd - totalCostUsd),
+    // Honest net (may be negative): plan overhead can exceed strong-alone on easy tasks.
+    savedUsd: baselineCostUsd - totalCostUsd,
   };
 }
