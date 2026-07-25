@@ -6,6 +6,7 @@ import { modelInfo } from "../registry.ts";
 import { callModel } from "./single.ts";
 import { runCascade } from "./cascade.ts";
 import { runPlan } from "./plan.ts";
+import { runClassify } from "./classify.ts";
 
 /**
  * Entry point: look at the requested "model" name and pick a behavior.
@@ -27,6 +28,10 @@ export async function route(
 
   if (name === "auto-plan") {
     return runPlan(providers, config, req);
+  }
+
+  if (name === "auto-classify") {
+    return runClassify(providers, config, req);
   }
 
   // Concrete model pass-through.
