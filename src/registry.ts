@@ -44,3 +44,8 @@ export const MODELS: Record<string, ModelInfo> = {
 export function modelInfo(id: string): ModelInfo | undefined {
   return MODELS[id];
 }
+
+/** Add or override a model at load time (used by the config file's `models`). */
+export function registerModel(info: ModelInfo): void {
+  MODELS[info.id] = info;
+}

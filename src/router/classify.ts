@@ -29,7 +29,7 @@ export interface Difficulty {
  * (Deterministic and zero-cost; a cheap-model or trained classifier can be
  * swapped in later for more accuracy.)
  */
-export function classify(text: string): Difficulty {
+export function classify(text: string, threshold = 0.4): Difficulty {
   const t = text.toLowerCase();
   const reasons: string[] = [];
   let score = 0;
@@ -61,7 +61,7 @@ export function classify(text: string): Difficulty {
   }
 
   score = Math.max(0, Math.min(1, score));
-  return { score, hard: score >= 0.4, reasons: reasons.length ? reasons : ["no strong signals"] };
+  return { score, hard: score >= threshold, reasons: reasons.length ? reasons : ["no strong signals"] };
 }
 
 function lastUserContent(messages: Message[]): string {
@@ -78,7 +78,7 @@ export async function runClassify(
   config: Config,
   req: ChatRequest,
 ): Promise<RouteOutcome> {
-  const d = classify(lastUserContent(req.messages));
+  const d = classify(lastUserContent(req.messages), config.classifyThreshold);
   const model = d.hard ? config.strongModel : config.cheapModel;
 
   const { content, step } = await callModel(

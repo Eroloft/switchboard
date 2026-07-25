@@ -1,0 +1,11 @@
+{
+  "port": 4000,
+  "cheapModel": "gpt-4o-mini",
+  "strongModel": "gpt-4o",
+  "classifyThreshold": 0.4,
+  "ollamaBaseUrl": "http://localhost:11434",
+  "statsDbPath": "switchboard.db",
+  "models": {
+    "my-custom-model": { "provider": "openai", "tier": "strong", "inputPerM": 5, "outputPerM": 15 }
+  }
+}

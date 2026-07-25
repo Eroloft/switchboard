@@ -150,6 +150,26 @@ whether the router's answer is `ACCEPTABLE` or `WORSE`, then reports **quality r
 next to the savings — the full "saved X% *without losing quality*" proof. (A mock judge
 reports `n/a`; point it at a real model for real scores.)
 
+## Configuration
+
+Everything works from env vars and sensible defaults, but you can drop a
+`switchboard.config.json` (copy `switchboard.config.example.json`) to set the models,
+the classifier threshold, or register custom models with pricing:
+
+```json
+{
+  "cheapModel": "gpt-4o-mini",
+  "strongModel": "gpt-4o",
+  "classifyThreshold": 0.4,
+  "models": {
+    "my-custom-model": { "provider": "openai", "tier": "strong", "inputPerM": 5, "outputPerM": 15 }
+  }
+}
+```
+
+Precedence is **env var > config file > built-in default**. Point elsewhere with
+`SWITCHBOARD_CONFIG=/path/to/config.json`.
+
 ## Roadmap
 
 - [x] OpenAI-compatible `/v1/chat/completions`
@@ -161,6 +181,8 @@ reports `n/a`; point it at a real model for real scores.)
 - [x] Real, verified pricing table (Anthropic + OpenAI)
 - [x] Eval harness (`bun run eval`) — routing accuracy + % cost saved
 - [x] LLM-judge quality scoring in eval (`EVAL_JUDGE=1`) — prove quality is unchanged
+- [x] Config file (`switchboard.config.json`) — models, classifier threshold, custom pricing
+- [ ] True incremental (token-by-token) streaming
 - [x] Anthropic-native `/v1/messages` endpoint (Claude Code / Claude SDK clients)
 - [x] Provider fallback (same-tier, cross-provider) on errors
 
