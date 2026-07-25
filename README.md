@@ -140,7 +140,7 @@ signal; classify routes more precisely).
 - [x] Eval harness (`bun run eval`) — routing accuracy + % cost saved
 - [ ] LLM-judge quality scoring in eval (prove answer quality is unchanged)
 - [ ] Anthropic-native `/v1/messages` (Claude Code support)
-- [ ] Provider fallback / retry on errors
+- [x] Provider fallback (same-tier, cross-provider) on errors
 
 ## Status
 

@@ -18,6 +18,11 @@ export class Providers {
     if (config.anthropicKey) this.byId.set("anthropic", new AnthropicProvider(config.anthropicKey));
   }
 
+  /** Is a provider backend configured and available? */
+  has(providerId: string): boolean {
+    return this.byId.has(providerId);
+  }
+
   /** Find the provider that serves a concrete model id. */
   forModel(modelId: string): Provider {
     const info = modelInfo(modelId);
