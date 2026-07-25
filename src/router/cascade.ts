@@ -22,18 +22,21 @@ export async function runCascade(
 
   let content = cheap.content;
   let actualModel = config.cheapModel;
+  // Usage the strong model would spend answering alone. Without escalation we proxy
+  // it from the cheap step; with escalation the strong step ran the SAME messages,
+  // so its real usage is the true strong-alone cost.
+  let strongAloneUsage = cheap.step.usage;
 
   if (looksLowConfidence(cheap.content)) {
     const strong = await callModel(providers, config.strongModel, req.messages, req, "cascade: escalated");
     steps.push(strong.step);
     content = strong.content;
     actualModel = config.strongModel;
+    strongAloneUsage = strong.step.usage;
   }
 
   const totalCostUsd = steps.reduce((s, x) => s + x.costUsd, 0);
-  // Baseline = the strong model doing the same work alone
-  // (we reuse the cheap step's token counts as a proxy for the prompt size).
-  const baselineCostUsd = costUsd(config.strongModel, cheap.step.usage);
+  const baselineCostUsd = costUsd(config.strongModel, strongAloneUsage);
 
   return {
     content,
@@ -42,6 +45,9 @@ export async function runCascade(
     steps,
     totalCostUsd,
     baselineCostUsd,
-    savedUsd: Math.max(0, baselineCostUsd - totalCostUsd),
+    // Honest net (may be negative): when a shaky cheap answer forced escalation we
+    // paid the wasted cheap call ON TOP of strong-alone, so cumulative /stats no
+    // longer overstates savings by hiding the loss behind Math.max(0, …).
+    savedUsd: baselineCostUsd - totalCostUsd,
   };
 }

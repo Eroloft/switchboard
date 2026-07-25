@@ -98,3 +98,38 @@ test("cascade reports savings vs the strong-only baseline", async () => {
   expect(out.savedUsd).toBeGreaterThanOrEqual(0);
   expect(out.baselineCostUsd).toBeGreaterThanOrEqual(out.totalCostUsd);
 });
+
+test("cascade escalation records the wasted cheap call as negative savings", async () => {
+  // A cheap answer echoing "i don't know" trips the low-confidence check → escalates.
+  const config = mockConfig();
+  const out = await route(new Providers(config), config, {
+    model: "auto-cascade",
+    messages: [{ role: "user", content: "i don't know, please explain in detail" }],
+  });
+  expect(out.strategy).toBe("cascade");
+  expect(out.actualModel).toBe("mock-strong");
+  expect(out.steps.length).toBe(2); // cheap attempt + escalated strong
+  // We paid the wasted cheap call ON TOP of strong-alone, so net savings are negative.
+  expect(out.totalCostUsd).toBeGreaterThan(out.baselineCostUsd);
+  expect(out.savedUsd).toBeLessThan(0);
+});
+
+test("auto-plan baseline is single-shot, not the N-counted step sum", async () => {
+  const config = mockConfig();
+  const out = await route(new Providers(config), config, {
+    model: "auto-plan",
+    messages: [{ role: "user", content: "explain recursion clearly with an example" }],
+  });
+  expect(out.strategy).toBe("plan");
+  // The old bug summed every sub-step's usage (task context re-injected N times),
+  // inflating the strong-alone baseline ~N×. The fix prices a single strong-alone shot.
+  const summed = out.steps.reduce(
+    (u, s) => ({
+      promptTokens: u.promptTokens + s.usage.promptTokens,
+      completionTokens: u.completionTokens + s.usage.completionTokens,
+    }),
+    { promptTokens: 0, completionTokens: 0 },
+  );
+  const inflatedBaseline = costUsd("mock-strong", summed);
+  expect(out.baselineCostUsd).toBeLessThan(inflatedBaseline);
+});

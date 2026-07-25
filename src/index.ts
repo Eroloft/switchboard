@@ -5,6 +5,7 @@ import { Providers } from "./providers/index.ts";
 import { route } from "./router/index.ts";
 import { modelInfo } from "./registry.ts";
 import { Stats } from "./stats.ts";
+import type { RouteOutcome } from "./router/types.ts";
 import type { ChatRequest, Message } from "./types.ts";
 
 const config = loadConfig();
@@ -57,8 +58,22 @@ function fromAnthropic(body: any): ChatRequest {
   };
 }
 
+interface RunResult {
+  out: RouteOutcome;
+  savedPct: number;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+/** Client errors (malformed body / unknown model) → 400; everything else → 500. */
+function statusFor(err: unknown): 400 | 500 {
+  if (err instanceof SyntaxError) return 400; // c.req.json() on a malformed body
+  const msg = String((err as any)?.message ?? err);
+  return msg.startsWith("Unknown model/strategy") ? 400 : 500;
+}
+
 /** Route a request, log it, record stats. Shared by both API surfaces. */
-async function runAndRecord(req: ChatRequest) {
+async function runAndRecord(req: ChatRequest): Promise<RunResult> {
   const out = await route(providers, config, req);
   const savedPct = out.baselineCostUsd > 0 ? Math.round((out.savedUsd / out.baselineCostUsd) * 100) : 0;
 
@@ -99,8 +114,8 @@ async function runAndRecord(req: ChatRequest) {
 // --- OpenAI-compatible endpoint (Codex / Cursor / Aider / SDKs) -----------
 
 app.post("/v1/chat/completions", async (c) => {
-  const req = fromOpenAI((await c.req.json()) as any);
   try {
+    const req = fromOpenAI((await c.req.json()) as any);
     const { out, savedPct, promptTokens, completionTokens } = await runAndRecord(req);
 
     if (req.stream) {
@@ -143,15 +158,15 @@ app.post("/v1/chat/completions", async (c) => {
       },
     });
   } catch (err: any) {
-    return c.json({ error: { message: String(err?.message ?? err) } }, 500);
+    return c.json({ error: { message: String(err?.message ?? err) } }, statusFor(err));
   }
 });
 
 // --- Anthropic-compatible endpoint (Claude Code and other Claude clients) --
 
 app.post("/v1/messages", async (c) => {
-  const req = fromAnthropic((await c.req.json()) as any);
   try {
+    const req = fromAnthropic((await c.req.json()) as any);
     const { out, promptTokens, completionTokens } = await runAndRecord(req);
     const id = `msg_sb_${Date.now()}`;
 
@@ -205,7 +220,7 @@ app.post("/v1/messages", async (c) => {
       usage: { input_tokens: promptTokens, output_tokens: completionTokens },
     });
   } catch (err: any) {
-    return c.json({ type: "error", error: { type: "api_error", message: String(err?.message ?? err) } }, 500);
+    return c.json({ type: "error", error: { type: "api_error", message: String(err?.message ?? err) } }, statusFor(err));
   }
 });
 
