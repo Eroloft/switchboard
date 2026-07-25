@@ -136,6 +136,20 @@ Point it at your real models (via `.env`) for real dollar figures. This is the
 trade-off between strategies explicit (cascade saves more but leans on the confidence
 signal; classify routes more precisely).
 
+### Measuring quality, not just savings
+
+Add `EVAL_JUDGE=1` and a capable judge model to prove the router's cheaper answers
+are *as good as* the strong model's:
+
+```bash
+EVAL_JUDGE=1 EVAL_JUDGE_MODEL=gpt-4o bun run eval
+```
+
+For each case it fetches a reference answer from the strong model and asks the judge
+whether the router's answer is `ACCEPTABLE` or `WORSE`, then reports **quality retained %**
+next to the savings — the full "saved X% *without losing quality*" proof. (A mock judge
+reports `n/a`; point it at a real model for real scores.)
+
 ## Roadmap
 
 - [x] OpenAI-compatible `/v1/chat/completions`
@@ -146,7 +160,7 @@ signal; classify routes more precisely).
 - [x] Streaming (SSE) responses — OpenAI-compatible chunks (so Cursor/Codex/SDKs work)
 - [x] Real, verified pricing table (Anthropic + OpenAI)
 - [x] Eval harness (`bun run eval`) — routing accuracy + % cost saved
-- [ ] LLM-judge quality scoring in eval (prove answer quality is unchanged)
+- [x] LLM-judge quality scoring in eval (`EVAL_JUDGE=1`) — prove quality is unchanged
 - [x] Anthropic-native `/v1/messages` endpoint (Claude Code / Claude SDK clients)
 - [x] Provider fallback (same-tier, cross-provider) on errors
 
