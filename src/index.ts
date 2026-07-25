@@ -15,72 +15,94 @@ const app = new Hono();
 app.get("/health", (c) => c.json({ status: "ok", service: "switchboard" }));
 
 // Cumulative savings across all requests — powers subscription / comparison views.
-// Optional ?since=<unix-seconds> to window the totals.
 app.get("/stats", (c) => {
   const since = Number(c.req.query("since") ?? 0);
   return c.json(stats.summary(Number.isFinite(since) ? since : 0));
 });
 
-// OpenAI-compatible endpoint — this is what Codex / Cursor / Aider talk to.
-app.post("/v1/chat/completions", async (c) => {
-  const body = (await c.req.json()) as any;
+// --- helpers -------------------------------------------------------------
 
-  const req: ChatRequest = {
+/** Flatten OpenAI/Anthropic message content (string or block array) to text. */
+function textOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return content.map((p: any) => p?.text ?? "").join("");
+  return "";
+}
+
+function fromOpenAI(body: any): ChatRequest {
+  return {
     model: body.model ?? "auto-cascade",
-    messages: (body.messages ?? []).map(
-      (m: any): Message => ({
-        role: m.role,
-        content:
-          typeof m.content === "string"
-            ? m.content
-            : (m.content ?? []).map((p: any) => p.text ?? "").join(""),
-      }),
-    ),
+    messages: (body.messages ?? []).map((m: any): Message => ({ role: m.role, content: textOf(m.content) })),
     temperature: body.temperature,
     maxTokens: body.max_tokens,
     stream: body.stream,
   };
+}
 
+function fromAnthropic(body: any): ChatRequest {
+  const messages: Message[] = [];
+  if (body.system) {
+    const sys = textOf(body.system);
+    if (sys) messages.push({ role: "system", content: sys });
+  }
+  for (const m of body.messages ?? []) {
+    messages.push({ role: m.role, content: textOf(m.content) });
+  }
+  return {
+    model: body.model ?? "auto-cascade",
+    messages,
+    temperature: body.temperature,
+    maxTokens: body.max_tokens,
+    stream: body.stream,
+  };
+}
+
+/** Route a request, log it, record stats. Shared by both API surfaces. */
+async function runAndRecord(req: ChatRequest) {
+  const out = await route(providers, config, req);
+  const savedPct = out.baselineCostUsd > 0 ? Math.round((out.savedUsd / out.baselineCostUsd) * 100) : 0;
+
+  console.log(
+    `[switchboard] strategy=${out.strategy} model=${out.actualModel} ` +
+      `cost=$${out.totalCostUsd.toFixed(6)} baseline=$${out.baselineCostUsd.toFixed(6)} ` +
+      `saved=$${out.savedUsd.toFixed(6)} (${savedPct}%)`,
+  );
+
+  const promptTokens = out.steps.reduce((s, x) => s + x.usage.promptTokens, 0);
+  const completionTokens = out.steps.reduce((s, x) => s + x.usage.completionTokens, 0);
+
+  let cheapTokens = 0;
+  let strongTokens = 0;
+  for (const s of out.steps) {
+    const t = s.usage.promptTokens + s.usage.completionTokens;
+    if (modelInfo(s.model)?.tier === "strong") strongTokens += t;
+    else cheapTokens += t;
+  }
+
+  stats.record({
+    ts: Math.floor(Date.now() / 1000),
+    strategy: out.strategy,
+    model: out.actualModel,
+    promptTokens,
+    completionTokens,
+    cheapTokens,
+    strongTokens,
+    costUsd: out.totalCostUsd,
+    baselineUsd: out.baselineCostUsd,
+    savedUsd: out.savedUsd,
+    steps: out.steps.length,
+  });
+
+  return { out, savedPct, promptTokens, completionTokens };
+}
+
+// --- OpenAI-compatible endpoint (Codex / Cursor / Aider / SDKs) -----------
+
+app.post("/v1/chat/completions", async (c) => {
+  const req = fromOpenAI((await c.req.json()) as any);
   try {
-    const out = await route(providers, config, req);
-    const savedPct =
-      out.baselineCostUsd > 0 ? Math.round((out.savedUsd / out.baselineCostUsd) * 100) : 0;
+    const { out, savedPct, promptTokens, completionTokens } = await runAndRecord(req);
 
-    console.log(
-      `[switchboard] strategy=${out.strategy} model=${out.actualModel} ` +
-        `cost=$${out.totalCostUsd.toFixed(6)} baseline=$${out.baselineCostUsd.toFixed(6)} ` +
-        `saved=$${out.savedUsd.toFixed(6)} (${savedPct}%)`,
-    );
-
-    const promptTokens = out.steps.reduce((s, x) => s + x.usage.promptTokens, 0);
-    const completionTokens = out.steps.reduce((s, x) => s + x.usage.completionTokens, 0);
-
-    // Split tokens by tier so we can report "% handled by cheap models".
-    let cheapTokens = 0;
-    let strongTokens = 0;
-    for (const s of out.steps) {
-      const t = s.usage.promptTokens + s.usage.completionTokens;
-      if (modelInfo(s.model)?.tier === "strong") strongTokens += t;
-      else cheapTokens += t;
-    }
-
-    stats.record({
-      ts: Math.floor(Date.now() / 1000),
-      strategy: out.strategy,
-      model: out.actualModel,
-      promptTokens,
-      completionTokens,
-      cheapTokens,
-      strongTokens,
-      costUsd: out.totalCostUsd,
-      baselineUsd: out.baselineCostUsd,
-      savedUsd: out.savedUsd,
-      steps: out.steps.length,
-    });
-
-    // Streaming clients (Cursor, Codex, many SDKs) expect Server-Sent Events.
-    // MVP: we run the strategy to completion, then emit the result as valid
-    // OpenAI-style SSE chunks so those clients work without breaking.
     if (req.stream) {
       const id = `chatcmpl-sb-${Date.now()}`;
       const created = Math.floor(Date.now() / 1000);
@@ -105,19 +127,12 @@ app.post("/v1/chat/completions", async (c) => {
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
       model: out.actualModel,
-      choices: [
-        {
-          index: 0,
-          message: { role: "assistant", content: out.content },
-          finish_reason: "stop",
-        },
-      ],
+      choices: [{ index: 0, message: { role: "assistant", content: out.content }, finish_reason: "stop" }],
       usage: {
         prompt_tokens: promptTokens,
         completion_tokens: completionTokens,
         total_tokens: promptTokens + completionTokens,
       },
-      // Switchboard's own report: what it did and how much it saved.
       switchboard: {
         strategy: out.strategy,
         steps: out.steps,
@@ -132,7 +147,71 @@ app.post("/v1/chat/completions", async (c) => {
   }
 });
 
+// --- Anthropic-compatible endpoint (Claude Code and other Claude clients) --
+
+app.post("/v1/messages", async (c) => {
+  const req = fromAnthropic((await c.req.json()) as any);
+  try {
+    const { out, promptTokens, completionTokens } = await runAndRecord(req);
+    const id = `msg_sb_${Date.now()}`;
+
+    if (req.stream) {
+      return streamSSE(c, async (sse) => {
+        await sse.writeSSE({
+          event: "message_start",
+          data: JSON.stringify({
+            type: "message_start",
+            message: {
+              id,
+              type: "message",
+              role: "assistant",
+              model: out.actualModel,
+              content: [],
+              stop_reason: null,
+              stop_sequence: null,
+              usage: { input_tokens: promptTokens, output_tokens: 0 },
+            },
+          }),
+        });
+        await sse.writeSSE({
+          event: "content_block_start",
+          data: JSON.stringify({ type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }),
+        });
+        await sse.writeSSE({
+          event: "content_block_delta",
+          data: JSON.stringify({ type: "content_block_delta", index: 0, delta: { type: "text_delta", text: out.content } }),
+        });
+        await sse.writeSSE({ event: "content_block_stop", data: JSON.stringify({ type: "content_block_stop", index: 0 }) });
+        await sse.writeSSE({
+          event: "message_delta",
+          data: JSON.stringify({
+            type: "message_delta",
+            delta: { stop_reason: "end_turn", stop_sequence: null },
+            usage: { output_tokens: completionTokens },
+          }),
+        });
+        await sse.writeSSE({ event: "message_stop", data: JSON.stringify({ type: "message_stop" }) });
+      });
+    }
+
+    return c.json({
+      id,
+      type: "message",
+      role: "assistant",
+      model: out.actualModel,
+      content: [{ type: "text", text: out.content }],
+      stop_reason: "end_turn",
+      stop_sequence: null,
+      usage: { input_tokens: promptTokens, output_tokens: completionTokens },
+    });
+  } catch (err: any) {
+    return c.json({ type: "error", error: { type: "api_error", message: String(err?.message ?? err) } }, 500);
+  }
+});
+
 console.log(`switchboard listening on http://localhost:${config.port}`);
+console.log(`  OpenAI    endpoint: POST /v1/chat/completions`);
+console.log(`  Anthropic endpoint: POST /v1/messages`);
 console.log(`  cheap model:  ${config.cheapModel}`);
 console.log(`  strong model: ${config.strongModel}`);
 console.log(`  stats db:     ${config.statsDbPath}`);

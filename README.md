@@ -88,7 +88,15 @@ export OPENAI_API_KEY="anything"   # Switchboard uses your provider keys from .e
 
 Then run Codex / Cursor / Aider as usual — every request now flows through Switchboard.
 
-> Claude Code speaks the Anthropic format; a native `/v1/messages` endpoint is on the roadmap.
+For Anthropic-format clients (Claude Code and other Claude SDKs):
+
+```bash
+export ANTHROPIC_BASE_URL="http://localhost:4000"
+export ANTHROPIC_API_KEY="anything"
+```
+
+Switchboard serves **both** APIs: `POST /v1/chat/completions` (OpenAI) and
+`POST /v1/messages` (Anthropic) — same routing engine behind each.
 
 ## Stats & savings
 
@@ -139,7 +147,7 @@ signal; classify routes more precisely).
 - [x] Real, verified pricing table (Anthropic + OpenAI)
 - [x] Eval harness (`bun run eval`) — routing accuracy + % cost saved
 - [ ] LLM-judge quality scoring in eval (prove answer quality is unchanged)
-- [ ] Anthropic-native `/v1/messages` (Claude Code support)
+- [x] Anthropic-native `/v1/messages` endpoint (Claude Code / Claude SDK clients)
 - [x] Provider fallback (same-tier, cross-provider) on errors
 
 ## Status
