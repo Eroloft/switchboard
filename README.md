@@ -104,6 +104,30 @@ the strong-only baseline, dollars saved and saved %, plus a per-strategy breakdo
 Add `?since=<unix-seconds>` to window it (e.g. this month). This is the raw material
 for a "you saved $X this month" dashboard or subscription view.
 
+## Prove it — `bun run eval`
+
+See the savings and the routing quality for yourself:
+
+```bash
+bun run eval                            # default strategy: auto-classify
+EVAL_STRATEGY=auto-cascade bun run eval
+```
+
+It runs a labelled prompt set through the router and reports **routing accuracy**
+(did easy prompts go cheap and hard prompts go strong?) and **% cost saved** vs
+running the strong model on everything:
+
+```
+--- summary (8 cases) ---
+routing accuracy: 100%  (8/8 sent to the right tier)
+SAVED:    33%
+```
+
+Point it at your real models (via `.env`) for real dollar figures. This is the
+"save X% without losing quality" claim, measured — and it makes the savings-vs-accuracy
+trade-off between strategies explicit (cascade saves more but leans on the confidence
+signal; classify routes more precisely).
+
 ## Roadmap
 
 - [x] OpenAI-compatible `/v1/chat/completions`
@@ -112,8 +136,11 @@ for a "you saved $X this month" dashboard or subscription view.
 - [x] `auto-classify` (judge difficulty first) strategy
 - [x] Cumulative stats (SQLite) + `/stats` endpoint (saved $, tokens, per strategy)
 - [x] Streaming (SSE) responses — OpenAI-compatible chunks (so Cursor/Codex/SDKs work)
+- [x] Real, verified pricing table (Anthropic + OpenAI)
+- [x] Eval harness (`bun run eval`) — routing accuracy + % cost saved
+- [ ] LLM-judge quality scoring in eval (prove answer quality is unchanged)
 - [ ] Anthropic-native `/v1/messages` (Claude Code support)
-- [ ] Real, verified pricing table + eval harness ("saved X %, quality unchanged")
+- [ ] Provider fallback / retry on errors
 
 ## Status
 
