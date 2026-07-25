@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { loadConfig } from "./config.ts";
 import { Providers } from "./providers/index.ts";
 import { route } from "./router/index.ts";
@@ -76,6 +77,28 @@ app.post("/v1/chat/completions", async (c) => {
       savedUsd: out.savedUsd,
       steps: out.steps.length,
     });
+
+    // Streaming clients (Cursor, Codex, many SDKs) expect Server-Sent Events.
+    // MVP: we run the strategy to completion, then emit the result as valid
+    // OpenAI-style SSE chunks so those clients work without breaking.
+    if (req.stream) {
+      const id = `chatcmpl-sb-${Date.now()}`;
+      const created = Math.floor(Date.now() / 1000);
+      const chunk = (delta: object, finish: string | null) =>
+        JSON.stringify({
+          id,
+          object: "chat.completion.chunk",
+          created,
+          model: out.actualModel,
+          choices: [{ index: 0, delta, finish_reason: finish }],
+        });
+      return streamSSE(c, async (sse) => {
+        await sse.writeSSE({ data: chunk({ role: "assistant" }, null) });
+        await sse.writeSSE({ data: chunk({ content: out.content }, null) });
+        await sse.writeSSE({ data: chunk({}, "stop") });
+        await sse.writeSSE({ data: "[DONE]" });
+      });
+    }
 
     return c.json({
       id: `chatcmpl-sb-${Date.now()}`,

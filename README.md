@@ -111,7 +111,7 @@ for a "you saved $X this month" dashboard or subscription view.
 - [x] `auto-plan` (plan → execute) strategy
 - [x] `auto-classify` (judge difficulty first) strategy
 - [x] Cumulative stats (SQLite) + `/stats` endpoint (saved $, tokens, per strategy)
-- [ ] Streaming (SSE)
+- [x] Streaming (SSE) responses — OpenAI-compatible chunks (so Cursor/Codex/SDKs work)
 - [ ] Anthropic-native `/v1/messages` (Claude Code support)
 - [ ] Real, verified pricing table + eval harness ("saved X %, quality unchanged")
 
